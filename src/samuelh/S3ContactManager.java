@@ -1,4 +1,4 @@
-package script;
+package samuelh;
 
 import java.util.Scanner;
 
