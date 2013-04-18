@@ -30,13 +30,25 @@ public class S3ContactManager {
 		System.out.println(LINE_SEPARATOR);
 		System.out.println("***Make sure you have edited AwsCredentials.properties to include your AWS access keys before continuing***");
 		System.out.println("***AwsCredentials.properties is at " + CREDENTIALS_PATH);
+		System.out.println(LINE_SEPARATOR);
+		System.out.println("Press enter to continue...");
+		
+		//wait for enter
+		scn.nextLine();
+		
+		//formatting
+		System.out.println(LINE_SEPARATOR);
+		System.out.println();
+		
 		//get the S3 client
 		s3client = getS3Client();
 		
+		//request the name of an S3 bucket to operate on
 		System.out.println("To begin, please enter the name of an S3 bucket:");
 		bucketName = scn.nextLine();
+		
+		//check if it's a valid bucket name before continuing
 		if (validateBucketName(bucketName)) {
-			
 			
 			// let user interact with selected bucket as many times as they want
 			while (true) {
@@ -63,20 +75,23 @@ public class S3ContactManager {
 			s3client = new AmazonS3Client(myCredentials); 
 			System.out.println(s3client.getS3AccountOwner().getDisplayName());
 		} catch (Exception ex) {
-			System.out.println("There was a problem reading your credentials");
-			ex.printStackTrace();
+			System.out.println("There was a problem reading your credentials.");
+			System.out.println("Please make sure you have updated " + CREDENTIALS_PATH + " with your AWS credentials and restart.");
+			System.out.println(ex.getMessage());
+			System.exit(0);
 		}
 		
 		return s3client;
 	}
 
+	//check that a bucket name is ok to work with
 	private static boolean validateBucketName(String bucketName) {
 		//check format
 		if (!validateBucketNameFormat(bucketName)) {
 			return false;
 		}
 		
-		//check exists
+		//check whether the bucket is usable
 		if (!validateBucketNameUsable(bucketName)) {
 			return false;
 		}
@@ -87,7 +102,6 @@ public class S3ContactManager {
 	//validate the format of a bucket name
 	private static boolean validateBucketNameFormat(String bucketName) {
 		int numAllNumericLabels = 0;
-		
 		
 		//check valid length
 		if (bucketName.length() < 3 || bucketName.length() > 255) {
@@ -151,38 +165,54 @@ public class S3ContactManager {
 	
 	//check that a bucket name is usable (i.e. either owned by the account or able to be (and then) created
 	private static boolean validateBucketNameUsable(String bucketName) {
-		if (bucketNameAlreadyOwnedByUs(bucketName)) {
-			return true;
-		}
-		
-		if (otherAccountOwnsBucketName(bucketName)) {
-			return false;
+
+		if (s3client.doesBucketExist(bucketName)) {
+			if (bucketNameAlreadyOwnedByUs(bucketName)) {
+				return true;
+			} else {
+				return false;
+			}
 		} else {
 			//can create a bucket of this name. create it!
 			return createBucket(bucketName);
 		}
 	}
-
+	
+	/*
 	//check if another account owns the bucket of this name
 	private static boolean otherAccountOwnsBucketName(String bucketName) {
 		// check if bucket of this name is already owned by someone else
+		s3client.
 		System.out.println("ERROR: Another account already owns bucket " + bucketName);
 		return false;
 	}
-
+	*/
+	
 	//create the specified bucket
 	private static boolean createBucket(String bucketName) {
-		// create the bucket. return false if there is a problem creating this bucket (e.g. it's been created in the time since we checked)
-		
-		//create this S3 bucket
-		System.out.println("ERROR: There was a problem creating this bucket. Please try again.");
-		return false;
+		try {
+			// create the bucket. return false if there is a problem creating this bucket (e.g. it's been created in the time since we checked)
+			s3client.createBucket(bucketName);
+			System.out.println("Bucket created.");
+			return true;
+		} catch (Exception ex) {
+			//create this S3 bucket
+			System.out.println("ERROR: There was a problem creating this bucket. Please try again.");
+			return false;
+		}
 	}
 
-	//check if our account already owns this bucket
+	//check if our account already owns this bucket. if we successfully get the bucket's access 
+	//control list, we have access to the bucket. S3 throws an exception if we dont' have access 
+	//to it
 	private static boolean bucketNameAlreadyOwnedByUs(String bucketName) {
-		
-		return false;
+		try {
+			s3client.getBucketAcl(bucketName);
+			return true;
+		} catch (Exception ex) {
+			System.out.println("You don't have access to this bucket. Please operate on another bucket");
+			return false;
+		}
 	}
 	
 	//handle user's input for bucket options
