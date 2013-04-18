@@ -1,3 +1,5 @@
+NOTE: Per TA email to another student, I request that the user modify the included AwsCredentials.properties file with their keypair.
+
 Scenario: A business wants to store contact information for its agents on individual web pages that are stored in S3. Your job is to write a utility that allows very basic administration of the pages. The pages should be very simple but well-formed HTML that contain:
 A table with three columns and two rows
 The first row is a header row and contain the labels:
