@@ -3,6 +3,7 @@ package samuelh;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -12,6 +13,8 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.auth.PropertiesCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 public class S3ContactManager {
 	private static final String LINE_SEPARATOR = "------------------";
@@ -43,27 +46,32 @@ public class S3ContactManager {
 		//get the S3 client
 		s3client = getS3Client();
 		
-		//request the name of an S3 bucket to operate on
-		System.out.println("To begin, please enter the name of an S3 bucket:");
-		bucketName = scn.nextLine();
+		boolean bucketNameInputOkToProceed = false;
 		
-		//check if it's a valid bucket name before continuing
-		if (validateBucketName(bucketName)) {
+		while (!bucketNameInputOkToProceed) {
+			//request the name of an S3 bucket to operate on
+			System.out.println("To begin, please enter the name of an S3 bucket:");
+			bucketName = scn.nextLine();
 			
-			// let user interact with selected bucket as many times as they want
-			while (true) {
-				System.out.println("Please select an option below by entering the corresponding number and pressing enter");
-				System.out.println();
-				System.out.println("0 Exit the program");
-				System.out.println("1 List bucket contents - display a list of " + bucketName + "'s contents");
-				System.out.println("2 Delete an object in " + bucketName);
-				System.out.println("3 Create a new object in " + bucketName);
-				System.out.println("4 Edit an object in " + bucketName);
-				handleUserChoice(scn.nextLine(), bucketName);
+			//check if it's a valid bucket name before continuing. if not, restart bucket name input loop
+			bucketNameInputOkToProceed = validateBucketName(bucketName);
+			
+			if (bucketNameInputOkToProceed) {
+				
+				// let user interact with selected bucket as many times as they want
+				while (true) {
+					System.out.println("Please select an option below by entering the corresponding number and pressing enter");
+					System.out.println();
+					System.out.println("0 Exit the program");
+					System.out.println("1 List bucket contents - display a list of " + bucketName + "'s contents");
+					System.out.println("2 Delete an object in " + bucketName);
+					System.out.println("3 Create a new object in " + bucketName);
+					System.out.println("4 Edit an object in " + bucketName);
+					handleUserChoice(scn.nextLine(), bucketName);
+				}
+				
 			}
-			
 		}
-		
 	}
 
 	private static AmazonS3 getS3Client() {
@@ -73,7 +81,7 @@ public class S3ContactManager {
 		try {
 			myCredentials = new PropertiesCredentials(new File(CREDENTIALS_PATH));
 			s3client = new AmazonS3Client(myCredentials); 
-			System.out.println(s3client.getS3AccountOwner().getDisplayName());
+			System.out.println("Welcome, " + s3client.getS3AccountOwner().getDisplayName());
 		} catch (Exception ex) {
 			System.out.println("There was a problem reading your credentials.");
 			System.out.println("Please make sure you have updated " + CREDENTIALS_PATH + " with your AWS credentials and restart.");
@@ -117,8 +125,13 @@ public class S3ContactManager {
 			return false;
 		}
 		
+		//check that we do not have successive periods
+		if (bucketName.indexOf("..") > -1) {
+			System.out.println("ERROR: Bucket names may not have successive periods");
+			return false;
+		}
+		
 		//get labels by splitting on periods
-		//TODO: check that we do not have successive periods
 		String[] bucketNameLabels = bucketName.split(PERIOD_REG_EX);
 		//System.out.println("Number of labels in " + bucketName + ": " + bucketNameLabels.length);
 		
@@ -138,7 +151,6 @@ public class S3ContactManager {
 				return false;
 				
 			}
-			
 			
 			//see if label is all numeric to check against IP Address format
 			try {
@@ -177,16 +189,6 @@ public class S3ContactManager {
 			return createBucket(bucketName);
 		}
 	}
-	
-	/*
-	//check if another account owns the bucket of this name
-	private static boolean otherAccountOwnsBucketName(String bucketName) {
-		// check if bucket of this name is already owned by someone else
-		s3client.
-		System.out.println("ERROR: Another account already owns bucket " + bucketName);
-		return false;
-	}
-	*/
 	
 	//create the specified bucket
 	private static boolean createBucket(String bucketName) {
@@ -229,9 +231,11 @@ public class S3ContactManager {
 		System.out.println("2 Delete an object in " + bucketName);
 		System.out.println("3 Create a new object in " + bucketName);
 		System.out.println("4 Edit an object in " + bucketName);
+		System.out.println();
 		
 		switch(choice) {
 		case 0:
+			System.out.println();
 			System.out.println("Thank you for using S3 contact manager. Goodbye.");
 			System.exit(0);
 			break;
@@ -267,13 +271,43 @@ public class S3ContactManager {
 
 	//delete an object in the specified bucket
 	private static void deleteObjectInBucket(String bucketName) {
-		// TODO Auto-generated method stub
+		String objectToDelete = "";
+		System.out.println("Enter the name (key) of the object you want to delete:");
+		objectToDelete = scn.nextLine();
 		
+		try {
+			s3client.deleteObject(bucketName, objectToDelete);
+			System.out.println("Success");
+		} catch (Exception ex) {
+			System.out.println("There was a problem deleting " + objectToDelete + " from " + bucketName);
+			System.out.println(ex.getMessage());
+			System.out.println("Please try again.");
+		}
 	}
 
 	//list the contents of the specified bucket
 	private static void listContentsInBucket(String bucketName) {
-		// TODO Auto-generated method stub
+		try {
+			ObjectListing bucketContents = s3client.listObjects(bucketName);
+			List<S3ObjectSummary> bucketObjectSummaries = bucketContents.getObjectSummaries();
+			
+			System.out.println();
+			
+			if (bucketObjectSummaries.size() == 0) {
+				System.out.println(bucketName + " is currently empty.");
+			} else {
+				System.out.println("Listing contents:");
+				for (S3ObjectSummary object : bucketObjectSummaries) {
+					System.out.println(object.getKey() + " | " + object.getSize() + " | " + object.getLastModified().toString());
+				}
+			}
+			
+			System.out.println();
+		} catch (Exception ex) {
+			System.out.println("There was a problem listing the contents of " + bucketName);
+			System.out.println(ex.getMessage());
+			System.out.println("Please try again.");
+		}
 		
 	}
 }
