@@ -1,13 +1,26 @@
 package samuelh;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Map;
 import java.util.Scanner;
+
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
+import com.amazonaws.auth.PropertiesCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
 
 public class S3ContactManager {
 	private static final String LINE_SEPARATOR = "------------------";
 	private static final String BUCKET_NAME_VALID_REG_EX = "[a-z\\d.-]";
 	private static final String PERIOD_REG_EX = "[.]";
 	private static final String DASH_STRING = "-";
+	private static final String CREDENTIALS_PATH = new File("AwsCredentials.properties").getAbsolutePath();
 	
+	private static AmazonS3 s3client;
 	private static Scanner scn = new Scanner(System.in);;
 	
 	public static void main(String[] args) {
@@ -15,9 +28,16 @@ public class S3ContactManager {
 		
 		System.out.println("Welcome to the S3 Contact Manager");
 		System.out.println(LINE_SEPARATOR);
+		System.out.println("***Make sure you have edited AwsCredentials.properties to include your AWS access keys before continuing***");
+		System.out.println("***AwsCredentials.properties is at " + CREDENTIALS_PATH);
+		//get the S3 client
+		s3client = getS3Client();
+		
 		System.out.println("To begin, please enter the name of an S3 bucket:");
 		bucketName = scn.nextLine();
 		if (validateBucketName(bucketName)) {
+			
+			
 			// let user interact with selected bucket as many times as they want
 			while (true) {
 				System.out.println("Please select an option below by entering the corresponding number and pressing enter");
@@ -32,6 +52,22 @@ public class S3ContactManager {
 			
 		}
 		
+	}
+
+	private static AmazonS3 getS3Client() {
+		AWSCredentials myCredentials;
+		AmazonS3 s3client = null;
+		
+		try {
+			myCredentials = new PropertiesCredentials(new File(CREDENTIALS_PATH));
+			s3client = new AmazonS3Client(myCredentials); 
+			System.out.println(s3client.getS3AccountOwner().getDisplayName());
+		} catch (Exception ex) {
+			System.out.println("There was a problem reading your credentials");
+			ex.printStackTrace();
+		}
+		
+		return s3client;
 	}
 
 	private static boolean validateBucketName(String bucketName) {
@@ -134,6 +170,7 @@ public class S3ContactManager {
 		return false;
 	}
 
+	//create the specified bucket
 	private static boolean createBucket(String bucketName) {
 		// create the bucket. return false if there is a problem creating this bucket (e.g. it's been created in the time since we checked)
 		
@@ -144,6 +181,7 @@ public class S3ContactManager {
 
 	//check if our account already owns this bucket
 	private static boolean bucketNameAlreadyOwnedByUs(String bucketName) {
+		
 		return false;
 	}
 	
