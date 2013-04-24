@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Scanner;
 
 import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.auth.PropertiesCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -27,18 +28,16 @@ public class S3ContactManager {
 	private static final String BUCKET_NAME_VALID_REG_EX = "[a-z\\d.-]";
 	private static final String PERIOD_REG_EX = "[.]";
 	private static final String DASH_STRING = "-";
-	private static final String CREDENTIALS_PATH = new File("AwsCredentials.properties").getAbsolutePath();
 	private static final String HTML_TEMPLATE = "<!DOCTYPE html><html><table><tr><th>First Name</th><th>Last Name</th><th>Phone Number</th></tr><tr><td id=\"firstName\"></td><td id=\"lastName\"></td><td id=\"phoneNumber\"></td></tr></body></html>";
 
 	private static AmazonS3 s3client;
 	private static Scanner scn = new Scanner(System.in);;
 	
 	public static void main(String[] args) {
-		//welcome the user and give them a chance to edit AwsCredentials.properties before continuing
+		//welcome the user and give them a chance to edit environment variables before continuing
 		System.out.println("Welcome to the S3 Contact Manager");
 		System.out.println(LINE_SEPARATOR);
-		System.out.println("***Make sure you have edited AwsCredentials.properties to include your AWS access keys before continuing***");
-		System.out.println("***AwsCredentials.properties is at " + CREDENTIALS_PATH);
+		System.out.println("***Make sure you have edited your environment variables to include your AWS access keys before continuing***");
 		System.out.println(LINE_SEPARATOR);
 		System.out.println("Press enter to continue...");
 		
@@ -87,11 +86,12 @@ public class S3ContactManager {
 		AmazonS3 s3client = null;
 		
 		try {
-			myCredentials = new PropertiesCredentials(new File(CREDENTIALS_PATH));
+			//get credentials from environment variables
+			myCredentials = new EnvironmentVariableCredentialsProvider().getCredentials();
 			s3client = new AmazonS3Client(myCredentials); 
 		} catch (Exception ex) {
 			System.out.println("There was a problem reading your credentials.");
-			System.out.println("Please make sure you have updated " + CREDENTIALS_PATH + " with your AWS credentials and restart.");
+			System.out.println("Please make sure you have updated your environment variables with your AWS credentials and restart.");
 			System.exit(0);
 		}
 		
