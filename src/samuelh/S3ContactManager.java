@@ -269,13 +269,6 @@ public class S3ContactManager {
 			System.out.println(userInput + " is invalid. Please enter only the number of the option you want");
 		}
 		
-		//display options
-		System.out.println("1 List bucket contents - display a list of " + bucketName + "'s contents");
-		System.out.println("2 Delete an object in " + bucketName);
-		System.out.println("3 Create a new object in " + bucketName);
-		System.out.println("4 Edit an object in " + bucketName);
-		System.out.println();
-		
 		//handle the user's choice
 		switch(choice) {
 		case 0:
